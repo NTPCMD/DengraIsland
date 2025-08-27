@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Demyra Champion Island</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <style>
+    html, body {margin:0; padding:0; height:100%; width:100%; background:#e1fafc;}
+    body {font-family:'Quicksand', 'Arial Rounded MT Bold', Arial, sans-serif;}
+    .game-container {max-width:900px; margin:0 auto; padding:0; height:100vh; display:flex; flex-direction:column;}
+    #map {flex:1; position:relative; background:#9ee2ff url('https://i.imgur.com/5r8w1Gd.png') center no-repeat; background-size:contain;}
+    #player {position:absolute; width:60px; height:60px; transition:top 0.5s, left 0.5s; z-index:2;}
+    .loc-btn {position:absolute; width:80px; height:80px; background:rgba(255,255,255,0.18); border:2px solid #0074d9;
+      border-radius:50%; font-size:1.2em; color:#0074d9; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; z-index:1; transition:background 0.2s;}
+    .loc-btn:active {background:rgba(0,116,217,0.15);}
+    .hud {background:#fffbe6; padding:12px; display:flex; justify-content:space-between; align-items:center; font-size:1.1em; border-bottom:2px solid #ddd;}
+    .letters span {font-weight:bold; color:#0ba; letter-spacing:2px; font-size:1.15em;}
+    #room {position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(240,245,255,0.94); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:10;}
+    #room.active {display:flex;}
+    .room-title {font-size:2em; margin-bottom:0.5em;}
+    .room-content {font-size:1.2em; margin-bottom:1em;}
+    .room-btn {padding:18px 36px; font-size:1.2em; background:#0074d9; color:#fff; border:none; border-radius:6px; margin:8px 0; cursor:pointer;}
+    .room-btn:active {background:#005fa3;}
+    @media (max-width: 700px) {
+      .game-container {max-width:none;}
+      #player {width:40px;height:40px;}
+      .loc-btn {width:50px;height:50px;font-size:1em;}
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="hud">
+      <div><b>Demyra Champion Island</b></div>
+      <div>Letters: <span class="letters" id="letters"></span></div>
+    </div>
+    <div id="map">
+      <!-- Player sprite -->
+      <img src="https://i.imgur.com/uoJkXhD.png" id="player" style="top:70%;left:44%;" alt="player" />
+      <!-- Location buttons -->
+      <div class="loc-btn" style="top:72%;left:43%;" data-loc="plaza">Plaza</div>
+      <div class="loc-btn" style="top:60%;left:29%;" data-loc="docks">Docks</div>
+      <div class="loc-btn" style="top:32%;left:22%;" data-loc="forest">Forest</div>
+      <div class="loc-btn" style="top:12%;left:45%;" data-loc="mountain">Mountain</div>
+      <div class="loc-btn" style="top:33%;left:66%;" data-loc="yard">Yard</div>
+      <div class="loc-btn" style="top:60%;left:70%;" data-loc="ruins">Ruins</div>
+      <div class="loc-btn" style="top:40%;left:46%;" data-loc="arena">Arena</div>
+    </div>
+    <!-- Room overlay -->
+    <div id="room">
+      <div class="room-title" id="room-title"></div>
+      <div class="room-content" id="room-content"></div>
+      <button class="room-btn" id="room-action"></button>
+      <button class="room-btn" onclick="closeRoom()">Back to Island</button>
+    </div>
+  </div>
+  <script>
+    // Coordinates for locations (percentages of map container)
+    const locs = {
+      plaza: {top:'70%',left:'44%',title:"Central Plaza",desc:"Welcome, champion! Start your quest here."},
+      docks: {top:'60%',left:'29%',title:"Docks (D)",desc:"A boat race awaits. Win to earn the letter D."},
+      forest: {top:'32%',left:'22%',title:"Enchanted Forest (E)",desc:"A memory game challenge for the letter E."},
+      mountain: {top:'12%',left:'45%',title:"Mountain (M)",desc:"Test your reflexes for the letter M."},
+      yard: {top:'33%',left:'66%',title:"Yard (Y)",desc:"A soccer shootout for the letter Y."},
+      ruins: {top:'60%',left:'70%',title:"Ruins (R)",desc:"Navigate the maze to claim R."},
+      arena: {top:'40%',left:'46%',title:"Arena (A)",desc:"Duel the arena champion for A."}
+    };
+
+    let letters = { D:false, E:false, M:false, Y:false, R:false, A:false };
+    let currLoc = 'plaza';
+
+    function updateLetters() {
+      document.getElementById('letters').innerHTML =
+        Object.keys(letters).map(l =>
+          `<span style="color:${letters[l]?'#0ba':'#888'}">${l}</span>`
+        ).join(" ");
+    }
+    updateLetters();
+
+    // Move player sprite to location
+    function movePlayer(loc) {
+      const btn = document.querySelector(`.loc-btn[data-loc=${loc}]`);
+      if (!btn) return;
+      const player = document.getElementById('player');
+      player.style.top = btn.style.top;
+      player.style.left = btn.style.left;
+      currLoc = loc;
+    }
+
+    // Handle location click
+    document.querySelectorAll('.loc-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const loc = btn.dataset.loc;
+        movePlayer(loc);
+        setTimeout(()=>openRoom(loc), 400);
+      });
+    });
+
+    // Room/minigame logic (expand for more games)
+    function openRoom(loc) {
+      const room = document.getElementById('room');
+      const title = document.getElementById('room-title');
+      const content = document.getElementById('room-content');
+      const action = document.getElementById('room-action');
+      // Show room overlay
+      room.classList.add('active');
+      title.textContent = locs[loc].title;
+      if (letters[loc.charAt(0).toUpperCase()]) {
+        content.innerHTML = `You already won the <b>${loc.charAt(0).toUpperCase()}</b> medal here!`;
+        action.style.display = 'none';
+      } else if (loc === "plaza") {
+        content.innerHTML = "Visit each region on the island and win their minigames to collect all the letters in <b>DEMYRA</b>!<br>Tap the glowing islands to travel.";
+        action.style.display = 'none';
+      } else {
+        // Simple minigame placeholder
+        content.innerHTML = locs[loc].desc;
+        action.style.display = '';
+        action.textContent = "Play Minigame";
+        action.onclick = () => {
+          winLetter(loc);
+        };
+      }
+    }
+
+    function closeRoom() {
+      document.getElementById('room').classList.remove('active');
+    }
+
+    function winLetter(loc) {
+      const letter = loc.charAt(0).toUpperCase();
+      letters[letter] = true;
+      updateLetters();
+      document.getElementById('room-content').innerHTML =
+        `Congratulations! You won the <span style="color:#0ba;font-weight:bold;">${letter}</span> medal!`;
+      document.getElementById('room-action').style.display = 'none';
+      // Victory check
+      if (Object.values(letters).every(x=>x)) {
+        setTimeout(showVictory, 1200);
+      }
+    }
+
+    function showVictory() {
+      openRoom('plaza');
+      document.getElementById('room-title').textContent = "Champion!";
+      document.getElementById('room-content').innerHTML =
+        "You collected all letters and became the Demyra Island Champion!<br><br><img src='IMG_4188.jpeg' style='width:160px;margin:12px 0;border-radius:12px;box-shadow:0 2px 12px #bbb;'><br><button class='room-btn' onclick='window.location.reload()'>Play Again</button>";
+      document.getElementById('room-action').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
